@@ -36,3 +36,18 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pytest -q
 ```
+
+## Design notes
+
+| Role | Class |
+| --- | --- |
+| Target | `ShippingQuoteProvider` |
+| Adapter | `LegacyCarrierAdapter` |
+| Adaptee | `LegacyCarrier` |
+| Client | `Checkout` |
+
+`LegacyCarrierAdapter` implements `quote(destination, weight_kg)` by passing `destination` as the postal code and converting `weight_kg` to pounds (`1 kg = 2.20462 lb`) before calling `get_price`. `Checkout` and `LegacyCarrier` stay untouched.
+
+### Complexity cost
+
+The Adapter adds one more class and one more indirection between `Checkout` and the carrier. The unit conversion now lives in a place `Checkout` cannot see, so a wrong factor or rounding difference (kg vs lb) is easy to miss when reading the call site, and debugging a bad quote means tracing through the Adapter to the legacy API. Every new legacy carrier with a different interface would also need its own Adapter to maintain.
